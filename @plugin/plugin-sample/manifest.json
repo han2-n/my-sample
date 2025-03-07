@@ -1,0 +1,23 @@
+{
+  "id": "sample",
+  "name": "Sample Plugin",
+  "description": "A sample plugin demonstrating the plugin architecture for vue-vben-admin",
+  "version": "1.0.0",
+  "author": {
+    "name": "Vben Team",
+    "email": "sample@vben.io",
+    "url": "https://github.com/vbenjs/vue-vben-admin"
+  },
+  "homepage": "https://vben.io/plugins/sample",
+  "repository": "https://github.com/vbenjs/vue-vben-admin/plugins/sample",
+  "license": "MIT",
+  "entry": "./src/index.ts",
+  "enabled": true,
+  "dependencies": [],
+  "tags": ["sample", "demo", "vben"],
+  "settings": {
+    "enableDetailView": true,
+    "itemsPerPage": 10,
+    "theme": "default"
+  }
+}
