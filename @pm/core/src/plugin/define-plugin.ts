@@ -1,4 +1,4 @@
-import { PluginImpl, PluginMeta, PluginOptions } from '../types';
+import { PluginImpl, PluginMeta, PluginOptions } from '../types/plugin';
 
 /**
  * Define a plugin

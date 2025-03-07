@@ -72,11 +72,6 @@ export function setupPluginHooks(
     logger.info(`Route registered by plugin ${pluginId}: ${route.path}`);
   });
 
-  // Menu item registration
-  hooks.on('menuItemRegistered', (pluginId: string, menuItem: any) => {
-    logger.info(`Menu item registered by plugin ${pluginId}: ${menuItem.name}`);
-  });
-
   // Before plugin setup
   hooks.on('beforePluginSetup', (pluginId: string) => {
     logger.info(`Setting up plugin: ${pluginId}`);
@@ -95,6 +90,16 @@ export function setupPluginHooks(
   // Before plugin deactivation
   hooks.on('beforePluginDeactivate', (pluginId: string) => {
     logger.info(`Deactivating plugin: ${pluginId}`);
+  });
+
+  // State registration
+  hooks.on('stateRegistered', (pluginId: string, namespace: string) => {
+    logger.info(`State registered by plugin ${pluginId}: ${namespace}`);
+  });
+
+  // State removal
+  hooks.on('stateRemoved', (pluginId: string, namespace: string) => {
+    logger.info(`State removed by plugin ${pluginId}: ${namespace}`);
   });
 
   logger.info('Plugin hooks setup completed');

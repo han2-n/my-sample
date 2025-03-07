@@ -1,4 +1,4 @@
-import type { App, Component } from 'vue';
+import type { App, Component, UnwrapRef } from 'vue';
 import type { I18n } from 'vue-i18n';
 import type { Router, RouteRecordRaw } from 'vue-router';
 
@@ -15,8 +15,17 @@ export type PluginHookEvent =
   | 'beforePluginDeactivate'
   | 'beforePluginSetup'
   | 'componentRegistered'
-  | 'menuItemRegistered'
-  | 'routeRegistered';
+  | 'routeRegistered'
+  | 'stateRegistered'
+  | 'stateRemoved';
+
+/**
+ * State change listener type
+ */
+export type StateChangeListener<T = any> = (
+  newValue: T,
+  oldValue: T | undefined,
+) => void;
 
 /**
  * Plugin hooks interface
@@ -70,11 +79,6 @@ export interface PluginHooks {
   ): void;
 
   /**
-   * When a menu item is registered
-   */
-  menuItemRegistered: (pluginId: string, menuItem: any) => void;
-
-  /**
    * Unsubscribe from an event
    */
   off<E extends keyof PluginHooks>(event: E, handler: PluginHooks[E]): void;
@@ -91,6 +95,16 @@ export interface PluginHooks {
    * When a route is registered
    */
   routeRegistered: (pluginId: string, route: RouteRecordRaw) => void;
+
+  /**
+   * When a shared state is registered
+   */
+  stateRegistered: (pluginId: string, namespace: string) => void;
+
+  /**
+   * When a shared state is removed
+   */
+  stateRemoved: (pluginId: string, namespace: string) => void;
 }
 
 /**
@@ -117,6 +131,24 @@ export interface PluginContext {
    * Get all plugins
    */
   getPlugins: () => Plugin[];
+
+  /**
+   * Get a shared state from another plugin
+   * @param pluginId The plugin's unique ID that owns the state
+   * @param namespace The state namespace
+   * @returns The reactive state object or undefined if not found
+   */
+  getPluginState: <T = any>(
+    pluginId: string,
+    namespace: string,
+  ) => undefined | UnwrapRef<T>;
+
+  /**
+   * Check if a state exists
+   * @param pluginId The plugin's unique ID that owns the state
+   * @param namespace The state namespace
+   */
+  hasPluginState: (pluginId: string, namespace: string) => boolean;
 
   /**
    * Plugin hooks
@@ -148,19 +180,26 @@ export interface PluginContext {
   registerLocale: (locale: string, messages: Record<string, any>) => void;
 
   /**
-   * Register a menu item
-   */
-  registerMenuItem: (menuItem: any) => void;
-
-  /**
    * Register a permission
    */
   registerPermission: (permission: string, description?: string) => void;
 
   /**
    * Register a route
+   * Note: Use route.meta for menu properties (icon, title, etc.)
    */
   registerRoute: (route: RouteRecordRaw) => void;
+
+  /**
+   * Register a shared state that other plugins can access
+   * @param namespace The state namespace
+   * @param initialState The initial state object
+   * @returns The reactive state object
+   */
+  registerState: <T extends object>(
+    namespace: string,
+    initialState: T,
+  ) => UnwrapRef<T>;
 
   /**
    * Register a store module
@@ -176,4 +215,17 @@ export interface PluginContext {
    * Set configuration value
    */
   setConfig: <T = any>(key: string, value: T) => void;
+
+  /**
+   * Subscribe to changes in a state object
+   * @param pluginId The plugin's unique ID that owns the state
+   * @param namespace The state namespace
+   * @param listener The state change listener function
+   * @returns A function to unsubscribe
+   */
+  subscribeToState: <T = any>(
+    pluginId: string,
+    namespace: string,
+    listener: StateChangeListener<T>,
+  ) => () => void;
 }

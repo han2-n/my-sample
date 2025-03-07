@@ -1,5 +1,3 @@
-// @pm/runtime/src/application/plugin-application.ts
-
 import type { App } from 'vue';
 import type { I18n } from 'vue-i18n';
 import type { Router } from 'vue-router';
@@ -30,13 +28,13 @@ export class PluginApplication {
   private app: App | null = null;
   private booted = false;
   private configManager: PluginConfigManager;
-  private i18n: I18n | null = null;
 
+  private i18n: I18n | null = null;
   // Application state
   private initialized = false;
+
   private logger: ReturnType<typeof createLogger>;
   private pluginLoader: PluginLoader;
-
   // Core components
   private pluginManager: PluginManager;
 
@@ -86,12 +84,29 @@ export class PluginApplication {
    * @param plugins Array of plugin definitions [meta, impl]
    * @param options Additional options
    */
-  addInlinePluginSource(
+  addInlineSource(
     id: string,
     plugins: Array<[PluginMeta, PluginImpl]>,
     options: Record<string, any> = {},
   ): void {
     this.pluginLoader.addInlineSource(id, plugins, options);
+  }
+
+  /**
+   * Add a local file source using import.meta.glob
+   *
+   * @param id Source ID
+   * @param pattern The glob pattern
+   * @param modules The modules from import.meta.glob
+   * @param options Additional options
+   */
+  addLocalFileSource(
+    id: string,
+    pattern: string,
+    modules: Record<string, () => Promise<any>>,
+    options: Record<string, any> = {},
+  ): void {
+    this.pluginLoader.addLocalFileSource(id, pattern, modules, options);
   }
 
   /**
@@ -126,6 +141,7 @@ export class PluginApplication {
     try {
       // Load plugins from configured sources
       const pluginResults = await this.pluginLoader.loadAllPlugins();
+
       // Register loaded plugins
       for (const result of pluginResults) {
         if (result.error) {
@@ -253,71 +269,11 @@ export class PluginApplication {
       // Load saved plugin configurations
       await this.configManager.loadConfigs();
 
-      // Add plugin management components to the application
-      this.registerPluginComponents(app);
-
       this.initialized = true;
       this.logger.info('Plugin Application initialized successfully');
     } catch (error) {
       this.logger.error('Failed to initialize Plugin Application', error);
       throw error;
-    }
-  }
-
-  /**
-   * Install a plugin from a source
-   *
-   * @param source Plugin source location (URL, package name, etc.)
-   * @param type Source type
-   */
-  async installPlugin(
-    source: string,
-    type: PluginSourceType = PluginSourceType.Registry,
-  ): Promise<null | Plugin> {
-    if (!this.initialized) {
-      throw new Error(
-        'Plugin Application must be initialized before installing plugins',
-      );
-    }
-
-    this.logger.info(`Installing plugin from ${type}: ${source}`);
-
-    try {
-      // Create a temporary source
-      const pluginSource = {
-        location: source,
-        type,
-      };
-
-      // Load the plugin
-      const results =
-        await this.pluginLoader.loadPluginsFromSource(pluginSource);
-
-      if (results.length === 0) {
-        throw new Error(`No plugins found at source: ${source}`);
-      }
-
-      const result = results[0]; // Just take the first one for now
-      if (!result) return null;
-      if (result?.error) {
-        throw result.error;
-      }
-
-      // Register the plugin
-      const plugin = await this.pluginManager.register(
-        result.meta,
-        result.impl,
-      );
-
-      // Apply default configuration
-      if (plugin) {
-        this.configManager.applyConfigToPlugin(plugin);
-      }
-
-      return plugin;
-    } catch (error) {
-      this.logger.error(`Failed to install plugin from ${source}:`, error);
-      return null;
     }
   }
 
@@ -365,13 +321,13 @@ export class PluginApplication {
     this.pluginLoader.addInlineSource(sourceId, plugins);
 
     // Load plugins from this source
-    const source = {
+    const results = await this.pluginLoader.loadPluginsFromSource({
+      id: sourceId,
       location: 'inline',
       plugins,
       type: PluginSourceType.Inline,
-    };
+    });
 
-    const results = await this.pluginLoader.loadPluginsFromSource(source);
     const registeredPlugins: Plugin[] = [];
 
     // Register each plugin
@@ -388,6 +344,7 @@ export class PluginApplication {
         result.meta,
         result.impl,
       );
+
       if (plugin) {
         registeredPlugins.push(plugin);
 
@@ -463,26 +420,6 @@ export class PluginApplication {
     this.logger.info(`Uninstalling plugin: ${pluginId}`);
     return await this.pluginManager.unregister(pluginId);
   }
-
-  /**
-   * Register plugin management components with the Vue application
-   */
-  private registerPluginComponents(app: App): void {
-    // Import and register management components
-    // import('../components/management/plugin-manager.vue').then((component) => {
-    //   app.component('PluginManager', component.default);
-    // });
-
-    // import('../components/management/plugin-details.vue').then((component) => {
-    //   app.component('PluginDetails', component.default);
-    // });
-
-    // import('../components/management/plugin-config.vue').then((component) => {
-    //   app.component('PluginConfig', component.default);
-    // });
-
-    this.logger.info('Plugin management components registered');
-  }
 }
 
 /**
@@ -495,6 +432,3 @@ export function createPluginApplication(
 ): PluginApplication {
   return new PluginApplication(options);
 }
-
-// Export a global instance for easier usage
-// export const pluginApp = createPluginApplication();

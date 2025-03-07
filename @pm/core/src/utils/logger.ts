@@ -3,10 +3,16 @@ export interface LoggerOptions {
   prefix?: string;
 }
 
+/**
+ * Create a simple logger with configurable log level and prefix
+ *
+ * @param options Logger options
+ * @returns Logger object with methods for different log levels
+ */
 export function createLogger(options: LoggerOptions) {
   const { level, prefix = '[Plugin]' } = options;
 
-  // Log level priority
+  // Log level priority - lower number means more verbose
   const logLevels = {
     debug: 0,
     error: 3,

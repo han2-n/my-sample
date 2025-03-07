@@ -81,20 +81,32 @@ export default definePlugin(
         path: '/hello-world',
       });
 
-      // Register menu items
-      context.registerMenuItem({
-        icon: 'smile-outlined',
-        name: 'menu.helloWorld',
-        order: 100,
-        path: '/hello-world',
-      });
-
       // Register localizations
       context.registerLocale('en-US', enUS);
       context.registerLocale('zh-CN', zhCN);
 
+      // Register plugin state
+      const counterState = context.registerState('counter', {
+        count: 0,
+        lastUpdated: new Date(),
+      });
+
+      // Simple state update method example
+      this.updateCount = (value: number) => {
+        counterState.count = value;
+        counterState.lastUpdated = new Date();
+      };
+
       // Log setup completion
       context.log('info', 'Hello World plugin setup completed');
+    },
+
+    /**
+     * Custom method to update the counter state
+     * This will be available to other plugins to call
+     */
+    updateCount(value: number) {
+      // Implementation provided in setup
     },
   },
 );

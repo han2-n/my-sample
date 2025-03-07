@@ -25,53 +25,55 @@ export class LocalFilePluginLoader implements PluginSourceLoader {
     );
 
     try {
-      // In a real implementation, this would use dynamic imports
-      // For development environments, plugins would be in a known directory
+      // In a browser environment, this loader would use a manifest file or other approach
+      // to determine which plugins to import
 
-      // Example implementation for Node.js environment:
-      /*
-      const fs = require('fs');
-      const path = require('path');
-      
-      const pluginDir = source.location;
-      const pluginFolders = fs.readdirSync(pluginDir, { withFileTypes: true })
-        .filter(dirent => dirent.isDirectory())
-        .map(dirent => dirent.name);
-      
+      // This is a simplified implementation for browser environments
       const results: PluginLoadResult[] = [];
-      
-      for (const folder of pluginFolders) {
-        const pluginPath = path.join(pluginDir, folder);
-        const indexPath = path.join(pluginPath, 'index.js');
-        
-        if (fs.existsSync(indexPath)) {
+
+      // The location could be a path pattern for dynamic imports
+      // For example: './plugins/**/*.ts'
+
+      // We'll assume modules is an object with import functions obtained from
+      // import.meta.glob or similar Vite/Webpack feature
+      if (source.modules) {
+        for (const [path, importFn] of Object.entries(source.modules)) {
           try {
-            // Dynamic import
-            const pluginModule = await import(indexPath);
-            
-            // Assuming the default export is a tuple of [meta, impl]
-            const [meta, impl] = pluginModule.default;
-            
+            // Execute the dynamic import
+            const moduleExports = await importFn();
+
+            // Get the default export which should be a tuple of [meta, impl]
+            const pluginDef = moduleExports.default;
+
+            if (
+              !pluginDef ||
+              !Array.isArray(pluginDef) ||
+              pluginDef.length !== 2
+            ) {
+              this.logger.warn(`Invalid plugin definition in ${path}`);
+              continue;
+            }
+
+            const [meta, impl] = pluginDef;
+
             results.push({
-              meta,
               impl,
-              source
+              meta,
+              source,
             });
+
+            this.logger.info(`Loaded plugin from ${path}: ${meta.id}`);
           } catch (error) {
-            this.logger.error(`Error loading plugin from ${pluginPath}:`, error);
+            this.logger.error(`Error loading plugin from ${path}:`, error);
           }
         }
+      } else {
+        this.logger.warn(
+          `No modules provided for local file source: ${source.location}`,
+        );
       }
-      
+
       return results;
-      */
-
-      // For browser environment, we'll use a placeholder implementation
-      // In a real app, this would be implemented differently, possibly
-      // using a webpack context or a manifest file
-
-      // Placeholder implementation
-      return [];
     } catch (error) {
       this.logger.error(
         `Error loading plugins from ${source.location}:`,

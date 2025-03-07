@@ -118,6 +118,6 @@ function getPluginLocaleMessages(
   // This is a placeholder - in a real implementation, you'd need
   // to define a way to access locale messages from plugins
 
-  // For now, check if the plugin has a 'localeMessages' property
-  return (plugin as any).localeMessages || {};
+  // For now, we'll assume the plugin has a localeMessages property in its metadata
+  return (plugin.meta as any).localeMessages || {};
 }

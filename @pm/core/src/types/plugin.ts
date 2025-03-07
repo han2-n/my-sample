@@ -88,7 +88,7 @@ export interface PluginImpl {
 
   /**
    * Setup function is called when the plugin is loaded
-   * Register components, routes, menus, etc.
+   * Register components, routes, etc.
    */
   setup?: (context: PluginContext) => Promise<void> | void;
 }
@@ -108,17 +108,13 @@ export interface Plugin {
   impl: PluginImpl;
 
   /**
-   * Menu items registered by this plugin
-   */
-  menuItems?: any[];
-
-  /**
    * Plugin metadata
    */
   meta: PluginMeta;
 
   /**
    * Routes registered by this plugin
+   * Note: Routes include menu metadata in their 'meta' property
    */
   routes?: RouteRecordRaw[];
 

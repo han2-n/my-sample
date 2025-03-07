@@ -1,39 +1,52 @@
-// @pm/runtime/src/loader/plugin-loader.ts
-
 import type { PluginImpl, PluginMeta } from '@vben/pm-core';
 
 import { createLogger } from '@vben/pm-core';
 
-import { DatabasePluginLoader } from './loaders/database-loader';
 import { InlinePluginLoader } from './loaders/inline-plugin-loader';
 import { LocalFilePluginLoader } from './loaders/local-file-loader';
-import { RegistryPluginLoader } from './loaders/registry-loader';
-import { RemoteFilePluginLoader } from './loaders/remote-file-loader';
 
 // Define source types for plugins
 export enum PluginSourceType {
-  Database = 'database', // Application database (user-installed)
   Inline = 'inline', // Inline plugin definition
   LocalFile = 'local-file', // Local file system (development)
-  Registry = 'registry', // Plugin registry (like npm)
-  RemoteFile = 'remote-file', // Remote file (CDN, GitHub, etc.)
 }
 
 // Define plugin source interface
 export interface PluginSource {
+  // Source identifier (for referencing)
+  id?: string;
+
+  // Source location (path, URL, etc.)
   location: string;
+
+  // Additional metadata
   metadata?: Partial<PluginMeta>;
+
+  // For local file sources using dynamic imports
+  modules?: Record<string, () => Promise<any>>;
+
+  // Additional options
   options?: Record<string, any>;
+
   // For inline plugin definitions
   plugins?: Array<[PluginMeta, PluginImpl]>;
+
+  // Source type
   type: PluginSourceType;
 }
 
 // Plugin load result
 export interface PluginLoadResult {
+  // Optional error if loading failed
   error?: Error;
+
+  // Plugin implementation
   impl: PluginImpl;
+
+  // Plugin metadata
   meta: PluginMeta;
+
+  // Source information
   source: PluginSource;
 }
 
@@ -52,20 +65,23 @@ export interface PluginSourceLoader {
  * Responsible for loading plugins from various sources
  */
 export class PluginLoader {
-  private loadedPlugins: Map<string, PluginLoadResult> = new Map();
+  // Map of loaded plugins
+  private loadedPlugins = new Map<string, PluginLoadResult>();
+
+  // Map of source type to loader
   private loaders: Record<PluginSourceType, PluginSourceLoader> = {
-    [PluginSourceType.Database]: new DatabasePluginLoader(),
     [PluginSourceType.Inline]: new InlinePluginLoader(),
     [PluginSourceType.LocalFile]: new LocalFilePluginLoader(),
-    [PluginSourceType.Registry]: new RegistryPluginLoader(),
-    [PluginSourceType.RemoteFile]: new RemoteFilePluginLoader(),
   };
+
+  // Logger
   private logger = createLogger({ level: 'info', prefix: '[PluginLoader]' });
 
-  private sources: Map<string, PluginSource> = new Map();
+  // Map of source ID to source
+  private sources = new Map<string, PluginSource>();
 
   /**
-   * Add a plugin source with inline plugin definitions
+   * Add an inline plugin source with plugin definitions
    *
    * This method allows you to directly register plugins using the definePlugin pattern
    * without having to load them from an external source
@@ -80,6 +96,7 @@ export class PluginLoader {
     options: Record<string, any> = {},
   ): void {
     this.sources.set(id, {
+      id,
       location: 'inline',
       options,
       plugins,
@@ -91,10 +108,36 @@ export class PluginLoader {
   }
 
   /**
+   * Add a local file source using Vite's import.meta.glob
+   *
+   * @param id Source identifier
+   * @param pattern The glob pattern (e.g. './plugins/**\/*.ts')
+   * @param modules The modules obtained from import.meta.glob
+   * @param options Additional options
+   */
+  addLocalFileSource(
+    id: string,
+    pattern: string,
+    modules: Record<string, () => Promise<any>>,
+    options: Record<string, any> = {},
+  ): void {
+    this.sources.set(id, {
+      id,
+      location: pattern,
+      modules,
+      options,
+      type: PluginSourceType.LocalFile,
+    });
+    this.logger.info(
+      `Added local file plugin source: ${id} with pattern ${pattern}`,
+    );
+  }
+
+  /**
    * Add a plugin source
    */
   addSource(id: string, source: PluginSource): void {
-    this.sources.set(id, source);
+    this.sources.set(id, { ...source, id });
     this.logger.info(
       `Added plugin source: ${id} (${source.type}: ${source.location})`,
     );
@@ -165,7 +208,9 @@ export class PluginLoader {
 
     // Store loaded plugins
     for (const result of results) {
-      this.loadedPlugins.set(result.meta.id, result);
+      if (!result.error) {
+        this.loadedPlugins.set(result.meta.id, result);
+      }
     }
 
     return results;

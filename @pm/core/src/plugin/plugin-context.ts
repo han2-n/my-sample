@@ -1,11 +1,16 @@
-import type { App, Component } from 'vue';
+import type { App, Component, UnwrapRef } from 'vue';
 import type { I18n } from 'vue-i18n';
 import type { Router, RouteRecordRaw } from 'vue-router';
 
-import type { PluginContext, PluginHooks } from '../types/context';
+import type {
+  PluginContext,
+  PluginHooks,
+  StateChangeListener,
+} from '../types/context';
 import type { Plugin } from '../types/plugin';
 
 import { createLogger } from '../utils/logger';
+import { PluginStateRegistry } from '../utils/state-registry';
 
 /**
  * Create a plugin context
@@ -20,8 +25,9 @@ export function createPluginContext(options: {
   i18n: I18n;
   plugins: Record<string, Plugin>;
   router: Router;
+  stateRegistry: PluginStateRegistry;
 }): PluginContext {
-  const { app, config, hooks, i18n, plugins, router } = options;
+  const { app, config, hooks, i18n, plugins, router, stateRegistry } = options;
   const logger = createLogger({ level: 'info', prefix: '[Plugin]' });
 
   /**
@@ -51,6 +57,17 @@ export function createPluginContext(options: {
     },
     getPlugins() {
       return Object.values(plugins);
+    },
+
+    getPluginState<T = any>(
+      pluginId: string,
+      namespace: string,
+    ): undefined | UnwrapRef<T> {
+      return stateRegistry.getState<T>(pluginId, namespace);
+    },
+
+    hasPluginState(pluginId: string, namespace: string): boolean {
+      return stateRegistry.hasState(pluginId, namespace);
     },
 
     hooks,
@@ -113,24 +130,6 @@ export function createPluginContext(options: {
       i18n.global.mergeLocaleMessage(locale, messages);
     },
 
-    registerMenuItem(menuItem: any) {
-      // Get plugin ID
-      const pluginId = getCallerPluginId();
-
-      // Store with plugin
-      if (pluginId && plugins[pluginId]) {
-        if (!plugins[pluginId].menuItems) {
-          plugins[pluginId].menuItems = [];
-        }
-        plugins[pluginId].menuItems.push(menuItem);
-      }
-
-      // Emit hook event
-      if (pluginId) {
-        hooks.menuItemRegistered(pluginId, menuItem);
-      }
-    },
-
     registerPermission(permission: string, description?: string) {
       // This would depend on how vue-vben-admin handles permissions
       logger.info(`Registered permission: ${permission}`, { description });
@@ -157,6 +156,28 @@ export function createPluginContext(options: {
       }
     },
 
+    // State sharing methods
+    registerState<T extends object>(
+      namespace: string,
+      initialState: T,
+    ): UnwrapRef<T> {
+      const pluginId = getCallerPluginId();
+      if (!pluginId) {
+        throw new Error('Cannot register state: Plugin ID not available');
+      }
+
+      const state = stateRegistry.registerState(
+        pluginId,
+        namespace,
+        initialState,
+      );
+
+      // Emit hook event
+      hooks.stateRegistered(pluginId, namespace);
+
+      return state;
+    },
+
     registerStore(namespace: string, store: any) {
       // This would depend on how vue-vben-admin manages store modules
       logger.info(`Registered store module: ${namespace}`);
@@ -166,6 +187,14 @@ export function createPluginContext(options: {
 
     setConfig<T = any>(key: string, value: T): void {
       config[key] = value;
+    },
+
+    subscribeToState<T = any>(
+      pluginId: string,
+      namespace: string,
+      listener: StateChangeListener<T>,
+    ): () => void {
+      return stateRegistry.subscribeToState(pluginId, namespace, listener);
     },
   };
 

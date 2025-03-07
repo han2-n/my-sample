@@ -1,6 +1,6 @@
 import { inject, provide } from 'vue';
 
-import { PluginHooks } from '../types';
+import { PluginHooks } from '../types/context';
 import { createPluginHooks } from './create-hooks';
 
 // Symbol for providing/injecting hooks

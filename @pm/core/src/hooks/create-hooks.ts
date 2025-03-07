@@ -1,6 +1,5 @@
-import type { AnyFunction } from '@vben/types';
-
-import { PluginHooks } from '../types';
+import type { PluginHooks } from '../types/context';
+import type { AnyFunction } from '../types/utils';
 
 /**
  * Create plugin hooks system
@@ -19,8 +18,9 @@ export function createPluginHooks(): PluginHooks {
     beforePluginDeactivate: [],
     beforePluginSetup: [],
     componentRegistered: [],
-    menuItemRegistered: [],
     routeRegistered: [],
+    stateRegistered: [],
+    stateRemoved: [],
   };
 
   // Implementation for each hook function
@@ -76,10 +76,6 @@ export function createPluginHooks(): PluginHooks {
       }
     },
 
-    menuItemRegistered(pluginId: string, menuItem: any) {
-      emit('menuItemRegistered', pluginId, menuItem);
-    },
-
     // Event unsubscription
     off<E extends keyof PluginHooks>(event: E, handler: PluginHooks[E]): void {
       if (!handlers[event]) {
@@ -110,6 +106,15 @@ export function createPluginHooks(): PluginHooks {
 
     routeRegistered(pluginId: string, route: any) {
       emit('routeRegistered', pluginId, route);
+    },
+
+    // State hooks
+    stateRegistered(pluginId: string, namespace: string) {
+      emit('stateRegistered', pluginId, namespace);
+    },
+
+    stateRemoved(pluginId: string, namespace: string) {
+      emit('stateRemoved', pluginId, namespace);
     },
   };
 
