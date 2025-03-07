@@ -268,7 +268,7 @@ export class PluginManager {
       // Check if plugin is already registered
       if (this.plugins[meta.id]) {
         this.logger.warn(`Plugin already registered: ${meta.id}`);
-        return this.plugins[meta.id];
+        return this.plugins[meta.id] ?? null;
       }
 
       // Create plugin instance
@@ -367,6 +367,7 @@ export class PluginManager {
       }
 
       // Remove from registry
+      // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
       delete this.plugins[pluginId];
 
       this.logger.info(`Plugin unregistered: ${pluginId}`);

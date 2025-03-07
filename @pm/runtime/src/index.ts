@@ -1,11 +1,13 @@
+export { createPluginApplication } from './application/plugin-application';
 // Component registration
 export {
   registerPluginComponents,
   unregisterPluginComponents,
 } from './components/register';
-
 // I18n integration
 export { registerPluginLocales, removePluginLocales } from './i18n/register';
+
+export { PluginSourceType } from './loader/plugin-loader';
 
 // Router integration
 export {
@@ -13,9 +15,6 @@ export {
   registerPluginRoutes,
   removePluginRoutes,
 } from './router/register';
-
-// Main setup function
-export { setupPluginSystem } from './setup';
 
 // Store
 export { usePluginStore } from './store/plugin-store';
