@@ -1,78 +1,125 @@
-import type { PluginHooks } from '../types/context';
+import type { AnyFunction } from '@vben/types';
+
+import { PluginHooks } from '../types';
 
 /**
- * Create plugin hooks with event emitter functionality
+ * Create plugin hooks system
+ *
+ * This function creates a hooks system that can be used to subscribe to plugin lifecycle events.
  */
 export function createPluginHooks(): PluginHooks {
-  // Store event listeners
-  const listeners: Record<string, Array<(...args: any[]) => void>> = {
-    afterActivate: [],
-    afterDeactivate: [],
-    beforeActivate: [],
-    beforeDeactivate: [],
-    onComponentRegistered: [],
-    onMenuItemRegistered: [],
-    onRouteRegistered: [],
+  // Store for event handlers
+  const handlers: {
+    [K in keyof PluginHooks]?: Array<PluginHooks[K]>;
+  } = {
+    afterPluginActivate: [],
+    afterPluginDeactivate: [],
+    afterPluginSetup: [],
+    beforePluginActivate: [],
+    beforePluginDeactivate: [],
+    beforePluginSetup: [],
+    componentRegistered: [],
+    menuItemRegistered: [],
+    routeRegistered: [],
   };
 
-  // Create a function for each hook that calls all registered listeners
+  // Implementation for each hook function
   const hooks = {
-    afterActivate(pluginId: string) {
-      listeners.afterActivate.forEach((fn) => fn(pluginId));
+    afterPluginActivate(pluginId: string) {
+      emit('afterPluginActivate', pluginId);
     },
 
-    afterDeactivate(pluginId: string) {
-      listeners.afterDeactivate.forEach((fn) => fn(pluginId));
+    afterPluginDeactivate(pluginId: string) {
+      emit('afterPluginDeactivate', pluginId);
     },
 
-    beforeActivate(pluginId: string) {
-      listeners.beforeActivate.forEach((fn) => fn(pluginId));
+    afterPluginSetup(pluginId: string) {
+      emit('afterPluginSetup', pluginId);
     },
 
-    beforeDeactivate(pluginId: string) {
-      listeners.beforeDeactivate.forEach((fn) => fn(pluginId));
+    beforePluginActivate(pluginId: string) {
+      emit('beforePluginActivate', pluginId);
     },
 
-    onComponentRegistered(pluginId: string, componentName: string) {
-      listeners.onComponentRegistered.forEach((fn) =>
-        fn(pluginId, componentName),
-      );
+    beforePluginDeactivate(pluginId: string) {
+      emit('beforePluginDeactivate', pluginId);
     },
 
-    onMenuItemRegistered(pluginId: string, menuItem: any) {
-      listeners.onMenuItemRegistered.forEach((fn) => fn(pluginId, menuItem));
+    // Lifecycle hooks
+    beforePluginSetup(pluginId: string) {
+      emit('beforePluginSetup', pluginId);
     },
 
-    onRouteRegistered(pluginId: string, route: any) {
-      listeners.onRouteRegistered.forEach((fn) => fn(pluginId, route));
+    // Registration hooks
+    componentRegistered(pluginId: string, name: string, component: any) {
+      emit('componentRegistered', pluginId, name, component);
     },
-  };
 
-  // Add methods to manage listeners
-  const hooksWithMethods = {
-    ...hooks,
+    // Event emission
+    emit<E extends keyof PluginHooks>(
+      event: E,
+      ...args: Parameters<PluginHooks[E]>
+    ): void {
+      if (!handlers[event]) {
+        return;
+      }
 
-    // Remove an event listener
-    off<K extends keyof PluginHooks>(event: K, listener: PluginHooks[K]) {
-      const index = listeners[event].indexOf(listener as any);
-      if (index !== -1) {
-        listeners[event].splice(index, 1);
+      for (const handler of handlers[event]) {
+        try {
+          (handler as AnyFunction)(...args);
+        } catch (error) {
+          console.error(
+            `Error in plugin hook handler for ${String(event)}:`,
+            error,
+          );
+        }
       }
     },
 
-    // Add an event listener
-    on<K extends keyof PluginHooks>(event: K, listener: PluginHooks[K]) {
-      listeners[event].push(listener as any);
+    menuItemRegistered(pluginId: string, menuItem: any) {
+      emit('menuItemRegistered', pluginId, menuItem);
+    },
+
+    // Event unsubscription
+    off<E extends keyof PluginHooks>(event: E, handler: PluginHooks[E]): void {
+      if (!handlers[event]) {
+        return;
+      }
+
+      const index = handlers[event].indexOf(handler);
+      if (index !== -1) {
+        handlers[event].splice(index, 1);
+      }
+    },
+
+    // Event subscription
+    on<E extends keyof PluginHooks>(
+      event: E,
+      handler: PluginHooks[E],
+    ): () => void {
+      if (!handlers[event]) {
+        handlers[event] = [];
+      }
+      handlers[event].push(handler);
 
       // Return unsubscribe function
       return () => {
-        const index = listeners[event].indexOf(listener as any);
-        if (index !== -1) {
-          listeners[event].splice(index, 1);
-        }
+        this.off(event, handler);
       };
+    },
+
+    routeRegistered(pluginId: string, route: any) {
+      emit('routeRegistered', pluginId, route);
     },
   };
 
-  return hooksWithMethods as PluginHooks;
+  // Helper function to emit events
+  function emit<E extends keyof PluginHooks>(
+    event: E,
+    ...args: Parameters<PluginHooks[E]>
+  ): void {
+    hooks.emit(event, ...args);
+  }
+
+  return hooks;
 }

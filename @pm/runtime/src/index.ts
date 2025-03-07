@@ -1,25 +1,21 @@
-// Export component utilities
+// Component registration
 export {
   registerPluginComponents,
   unregisterPluginComponents,
-} from './components/register-components';
+} from './components/register';
 
-// Export locale utilities
-export {
-  removePluginLocales,
-  setupPluginLocales,
-} from './locales/setup-plugin-locales';
+// I18n integration
+export { registerPluginLocales, removePluginLocales } from './i18n/register';
 
-// Export router utilities
+// Router integration
 export {
   getPluginRoutes,
+  registerPluginRoutes,
   removePluginRoutes,
-  setupPluginRoutes,
-} from './router/setup-plugin-routes';
+} from './router/register';
 
-// Export the setup function
+// Main setup function
 export { setupPluginSystem } from './setup';
 
-// packages/@pm/runtime/src/index.ts
-// Export store
-export { usePluginStore } from './store/plugin';
+// Store
+export { usePluginStore } from './store/plugin-store';

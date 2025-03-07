@@ -1,5 +1,5 @@
 {
-  "name": "@vben/pm-runtime",
+  "name": "@vben/plugin-helloworld",
   "version": "5.5.3",
   "homepage": "https://github.com/vbenjs/vue-vben-admin",
   "bugs": "https://github.com/vbenjs/vue-vben-admin/issues",

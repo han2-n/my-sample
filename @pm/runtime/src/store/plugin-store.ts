@@ -1,12 +1,15 @@
-import type { PluginInstance, PluginManifest } from '@vben/pm-core';
+import type { Plugin, PluginImpl, PluginMeta } from '@vben/pm-core';
 
 import { computed, ref } from 'vue';
 
 import { PluginManager } from '@vben/pm-core';
 
-// packages/@pm/runtime/src/store/plugin.ts
 import { defineStore } from 'pinia';
 
+/**
+ * Pinia store for managing plugins
+ * This provides a reactive interface to the plugin system
+ */
 export const usePluginStore = defineStore('plugin', () => {
   // State
   const pluginManager = ref<null | PluginManager>(null);
@@ -17,15 +20,14 @@ export const usePluginStore = defineStore('plugin', () => {
   // Getters
   const isInitialized = computed(() => initialized.value);
   const isLoading = computed(() => loading.value);
-  const hasError = computed(() => error.value !== null);
   const errorMessage = computed(() => error.value?.message || '');
 
   const allPlugins = computed(() => {
-    return pluginManager.value?.getAllPlugins() || [];
+    return pluginManager.value?.getPlugins() || [];
   });
 
   const activePlugins = computed(() => {
-    return pluginManager.value?.getActivatedPlugins() || [];
+    return pluginManager.value?.getActivePlugins() || [];
   });
 
   // Actions
@@ -36,9 +38,10 @@ export const usePluginStore = defineStore('plugin', () => {
     initialized.value = true;
   }
 
-  async function loadPlugin(
-    manifest: PluginManifest,
-  ): Promise<null | PluginInstance> {
+  async function registerPlugin(
+    meta: PluginMeta,
+    impl: PluginImpl,
+  ): Promise<null | Plugin> {
     if (!pluginManager.value) {
       throw new Error('Plugin manager not initialized');
     }
@@ -47,8 +50,7 @@ export const usePluginStore = defineStore('plugin', () => {
       loading.value = true;
       error.value = null;
 
-      const plugin = await pluginManager.value.loadPlugin(manifest);
-      return plugin;
+      return await pluginManager.value.register(meta, impl);
     } catch (error_) {
       error.value =
         error_ instanceof Error ? error_ : new Error(String(error_));
@@ -67,8 +69,7 @@ export const usePluginStore = defineStore('plugin', () => {
       loading.value = true;
       error.value = null;
 
-      const success = await pluginManager.value.activatePlugin(pluginId);
-      return success;
+      return await pluginManager.value.activate(pluginId);
     } catch (error_) {
       error.value =
         error_ instanceof Error ? error_ : new Error(String(error_));
@@ -87,8 +88,7 @@ export const usePluginStore = defineStore('plugin', () => {
       loading.value = true;
       error.value = null;
 
-      const success = await pluginManager.value.deactivatePlugin(pluginId);
-      return success;
+      return await pluginManager.value.deactivate(pluginId);
     } catch (error_) {
       error.value =
         error_ instanceof Error ? error_ : new Error(String(error_));
@@ -98,9 +98,36 @@ export const usePluginStore = defineStore('plugin', () => {
     }
   }
 
-  async function updatePluginManifest(
+  async function unregisterPlugin(pluginId: string): Promise<boolean> {
+    if (!pluginManager.value) {
+      throw new Error('Plugin manager not initialized');
+    }
+
+    try {
+      loading.value = true;
+      error.value = null;
+
+      return await pluginManager.value.unregister(pluginId);
+    } catch (error_) {
+      error.value =
+        error_ instanceof Error ? error_ : new Error(String(error_));
+      return false;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  function getPlugin(pluginId: string): Plugin | undefined {
+    if (!pluginManager.value) {
+      return undefined;
+    }
+
+    return pluginManager.value.getPlugin(pluginId);
+  }
+
+  async function updatePluginMeta(
     pluginId: string,
-    updates: Partial<PluginManifest>,
+    updates: Partial<PluginMeta>,
   ): Promise<boolean> {
     if (!pluginManager.value) {
       throw new Error('Plugin manager not initialized');
@@ -110,11 +137,7 @@ export const usePluginStore = defineStore('plugin', () => {
       loading.value = true;
       error.value = null;
 
-      const success = await pluginManager.value.updatePluginManifest(
-        pluginId,
-        updates,
-      );
-      return success;
+      return await pluginManager.value.updatePluginMeta(pluginId, updates);
     } catch (error_) {
       error.value =
         error_ instanceof Error ? error_ : new Error(String(error_));
@@ -122,14 +145,6 @@ export const usePluginStore = defineStore('plugin', () => {
     } finally {
       loading.value = false;
     }
-  }
-
-  function getPlugin(pluginId: string): PluginInstance | undefined {
-    if (!pluginManager.value) {
-      return undefined;
-    }
-
-    return pluginManager.value.getPlugin(pluginId);
   }
 
   return {
@@ -141,7 +156,6 @@ export const usePluginStore = defineStore('plugin', () => {
     error,
     errorMessage,
     getPlugin,
-    hasError,
     initialized,
     // Actions
     initializePluginManager,
@@ -150,9 +164,10 @@ export const usePluginStore = defineStore('plugin', () => {
     isInitialized,
     isLoading,
     loading,
-    loadPlugin,
     // State
     pluginManager,
-    updatePluginManifest,
+    registerPlugin,
+    unregisterPlugin,
+    updatePluginMeta,
   };
 });

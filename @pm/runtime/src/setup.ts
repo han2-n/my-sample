@@ -2,120 +2,95 @@ import type { App } from 'vue';
 import type { I18n } from 'vue-i18n';
 import type { Router } from 'vue-router';
 
-import type { PluginOptions } from '@vben/pm-core';
+import {
+  createLogger,
+  PluginManager,
+  PluginManagerOptions,
+  providePluginHooks,
+} from '@vben/pm-core';
 
-import { createLogger, PluginManager, providePluginHooks } from '@vben/pm-core';
-
-import { registerPluginComponents } from './components/register-components';
-import { setupPluginLocales } from './locales/setup-plugin-locales';
-import { setupPluginRoutes } from './router/setup-plugin-routes';
-import { usePluginStore } from './store/plugin';
+import { registerPluginComponents } from './components/register';
+import { registerPluginLocales, removePluginLocales } from './i18n/register';
+import { registerPluginRoutes, removePluginRoutes } from './router/register';
+import { usePluginStore } from './store/plugin-store';
 
 const logger = createLogger({ level: 'info', prefix: '[PluginSetup]' });
 
 /**
  * Setup the plugin system for vue-vben-admin
+ *
+ * This function initializes the plugin manager and sets up all the integrations
+ * with Vue.js, Vue Router, Vue I18n, and Pinia.
+ *
+ * @param app Vue application instance
+ * @param router Vue Router instance
+ * @param i18n Vue I18n instance
+ * @param options Plugin manager options
+ * @returns The initialized plugin manager
  */
 export async function setupPluginSystem(
   app: App,
   router: Router,
   i18n: I18n,
-  options: PluginOptions,
+  options: PluginManagerOptions = {},
 ): Promise<PluginManager> {
   logger.info('Setting up plugin system');
 
-  // Create the plugin hooks and provide them to Vue components
-  providePluginHooks();
+  // Create and provide plugin hooks
+  const hooks = providePluginHooks();
 
-  // Create the plugin manager
+  // Create plugin manager
   const pluginManager = new PluginManager(options);
 
-  // Initialize the plugin store
+  // Initialize plugin store
   const pluginStore = usePluginStore();
   await pluginStore.initializePluginManager(pluginManager);
 
-  // Initialize the plugin manager
-  await pluginManager.init({
-    app,
-    i18n,
-    router,
-    // Pass the pinia store instance
-    store: pluginStore,
-  });
+  // Initialize plugin manager
+  await pluginManager.init({ app, i18n, router });
 
-  // Setup plugins in the application
-  setupPluginsInApplication(app, router, i18n, pluginManager);
-
-  // Listen for plugin activation/deactivation
-  setupPluginHooks(app, router, i18n, pluginManager);
+  // Set up plugin lifecycle hooks
+  setupPluginHooks(app, router, i18n, pluginManager, hooks);
 
   logger.info('Plugin system setup complete');
   return pluginManager;
 }
 
 /**
- * Setup activated plugins in the application
- */
-function setupPluginsInApplication(
-  app: App,
-  router: Router,
-  i18n: I18n,
-  pluginManager: PluginManager,
-): void {
-  const activatedPlugins = pluginManager.getActivatedPlugins();
-
-  // Setup routes
-  setupPluginRoutes(router, activatedPlugins);
-
-  // Register components
-  registerPluginComponents(app, activatedPlugins);
-
-  // Setup locales
-  setupPluginLocales(i18n, activatedPlugins);
-}
-
-/**
- * Setup hooks for plugin lifecycle events
+ * Set up plugin lifecycle hooks
  */
 function setupPluginHooks(
   app: App,
   router: Router,
   i18n: I18n,
   pluginManager: PluginManager,
+  hooks: any,
 ): void {
-  const hooks = (pluginManager as any).hooks;
-
-  if (!hooks) {
-    logger.warn('Plugin hooks not available');
-    return;
-  }
-
-  // Listen for plugin activation
-  hooks.on('afterActivate', (pluginId: string) => {
+  // After plugin activation
+  hooks.on('afterPluginActivate', (pluginId: string) => {
     logger.info(`Plugin activated: ${pluginId}`);
 
     const plugin = pluginManager.getPlugin(pluginId);
     if (plugin) {
-      // Setup routes for this plugin
-      setupPluginRoutes(router, [plugin]);
-
-      // Register components for this plugin
+      // Register components, routes, and locales for this plugin
       registerPluginComponents(app, [plugin]);
-
-      // Setup locales for this plugin
-      setupPluginLocales(i18n, [plugin]);
+      registerPluginRoutes(router, [plugin]);
+      registerPluginLocales(i18n, [plugin]);
     }
   });
 
-  // Listen for plugin deactivation
-  hooks.on('afterDeactivate', (pluginId: string) => {
+  // After plugin deactivation
+  hooks.on('afterPluginDeactivate', (pluginId: string) => {
     logger.info(`Plugin deactivated: ${pluginId}`);
 
     const plugin = pluginManager.getPlugin(pluginId);
     if (plugin) {
-      // We would remove routes, components, and locales here
-      // but for now, let's just log it
-      logger.info(`Plugin ${pluginId} deactivated, resources would be removed`);
+      // Remove routes and locales for this plugin
+      removePluginRoutes(router, [plugin]);
+      removePluginLocales(i18n, [plugin]);
+
+      // Note: Components can't be unregistered in Vue, but we can log it
+      logger.info(`Plugin ${pluginId} components would be unregistered`);
     }
   });
 }

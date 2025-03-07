@@ -4,117 +4,184 @@ import type { RouteRecordRaw } from 'vue-router';
 import type { PluginContext } from './context';
 
 /**
- * Plugin manifest file definition
- * Every plugin must have a manifest.json file in its root directory
+ * Plugin metadata
  */
-export interface PluginManifest {
-  /** Plugin author information */
+export interface PluginMeta {
+  /**
+   * Author information
+   */
   author?: {
     email?: string;
     name: string;
     url?: string;
   };
 
-  /** Other plugins this plugin depends on */
+  /**
+   * Dependencies on other plugins
+   */
   dependencies?: string[];
 
-  /** Plugin description */
+  /**
+   * Description of the plugin
+   */
   description?: string;
 
-  /** Whether the plugin is enabled by default */
+  /**
+   * Whether the plugin is enabled by default
+   */
   enabled?: boolean;
 
-  /** Plugin entry point (relative to plugin root) */
-  entry?: string;
-
-  /** Plugin homepage URL */
+  /**
+   * Plugin homepage URL
+   */
   homepage?: string;
 
-  /** Unique plugin identifier */
+  /**
+   * Unique plugin identifier
+   */
   id: string;
 
-  /** Plugin license */
+  /**
+   * Plugin license
+   */
   license?: string;
 
-  /** Display name of the plugin */
+  /**
+   * Display name of the plugin
+   */
   name: string;
 
-  /** Plugin repository URL */
-  repository?: string;
-
-  /** Custom configuration settings */
+  /**
+   * Custom plugin settings
+   */
   settings?: Record<string, any>;
 
-  /** Plugin tags for categorization */
+  /**
+   * Plugin tags for categorization
+   */
   tags?: string[];
 
-  /** Plugin version (semver) */
+  /**
+   * Plugin version (semver)
+   */
   version?: string;
 }
 
 /**
- * Plugin Instance - created when a plugin is loaded
+ * Plugin implementation
  */
-export interface PluginInstance {
-  /** Plugin activation function */
+export interface PluginImpl {
+  /**
+   * Additional methods and properties
+   */
+  [key: string]: any;
+
+  /**
+   * Activation function when the plugin is activated
+   */
   activate?: () => Promise<void> | void;
 
-  /** Activated state */
-  activated: boolean;
-
-  /** Components registered by this plugin */
-  components?: Record<string, Component>;
-
-  /** Plugin deactivation function */
+  /**
+   * Deactivation function when the plugin is deactivated
+   */
   deactivate?: () => Promise<void> | void;
 
-  /** Loaded state */
-  loaded: boolean;
-
-  /** Plugin manifest data */
-  manifest: PluginManifest;
-
-  /** Menu items registered by this plugin */
-  menuItems?: any[];
-
-  /** Plugin metadata */
-  meta: {
-    /** When the plugin was installed */
-    installedAt?: Date;
-
-    /** When the plugin was last activated */
-    lastActivatedAt?: Date;
-
-    /** When the plugin was last updated */
-    updatedAt?: Date;
-  };
-
-  /** Routes registered by this plugin */
-  routes?: RouteRecordRaw[];
-
-  /** Plugin initialization function */
+  /**
+   * Setup function is called when the plugin is loaded
+   * Register components, routes, menus, etc.
+   */
   setup?: (context: PluginContext) => Promise<void> | void;
 }
 
 /**
- * Plugin Manager Options
+ * Plugin instance
  */
-export interface PluginOptions {
-  /** Auto-activate plugins on load */
+export interface Plugin {
+  /**
+   * Components registered by this plugin
+   */
+  components?: Record<string, Component>;
+
+  /**
+   * Plugin implementation
+   */
+  impl: PluginImpl;
+
+  /**
+   * Menu items registered by this plugin
+   */
+  menuItems?: any[];
+
+  /**
+   * Plugin metadata
+   */
+  meta: PluginMeta;
+
+  /**
+   * Routes registered by this plugin
+   */
+  routes?: RouteRecordRaw[];
+
+  /**
+   * Plugin status
+   */
+  status: {
+    /**
+     * Last activated timestamp
+     */
+    activatedAt?: Date;
+
+    /**
+     * Whether the plugin is active
+     */
+    active: boolean;
+
+    /**
+     * Installation timestamp
+     */
+    installedAt: Date;
+
+    /**
+     * Whether the plugin is loaded (setup executed)
+     */
+    loaded: boolean;
+
+    /**
+     * Last updated timestamp
+     */
+    updatedAt?: Date;
+  };
+}
+
+/**
+ * Plugin options passed to definePlugin
+ */
+export type PluginOptions = Omit<PluginMeta, 'id'>;
+
+/**
+ * Plugin manager options
+ */
+export interface PluginManagerOptions {
+  /**
+   * Whether to automatically activate plugins on registration
+   */
   autoActivate?: boolean;
 
-  /** Logger options */
+  /**
+   * Logger options
+   */
   logger?: {
     level: 'debug' | 'error' | 'info' | 'warn';
     prefix?: string;
   };
 
-  /** Enable dependency resolution */
+  /**
+   * Whether to resolve dependencies
+   */
   resolveDependencies?: boolean;
 
-  /** Plugin store directory path */
-  storeDir: string;
-
-  /** Strict mode for dependency checking */
+  /**
+   * Whether to enforce strict dependency checking
+   */
   strictDependencies?: boolean;
 }

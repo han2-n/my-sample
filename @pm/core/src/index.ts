@@ -1,16 +1,20 @@
-export { createPluginContext } from './context/plugin-context';
-
+// Hooks
 export { createPluginHooks } from './hooks/create-hooks';
-export { providePluginHooks, usePluginHooks } from './hooks/use-plugin-hooks';
-export { PluginLoader } from './manager/plugin-loader';
-// Export core functionality
-export { PluginManager } from './manager/plugin-manager';
-// Export types
-export * from './types';
+export { providePluginHooks, usePluginHooks } from './hooks/use-hooks';
+// Plugin definition
+export { definePlugin, definePluginObject } from './plugin/define-plugin';
 
+export { createPluginContext } from './plugin/plugin-context';
+export { PluginManager } from './plugin/plugin-manager';
+
+// Types
+export * from './types';
+// Utilities
 export {
-  resolvePluginDependencies,
+  getPluginDependencies,
+  getPluginDependents,
+  hasDependenciesSatisfied,
   sortPluginsByDependencies,
 } from './utils/dependency';
-// Export utilities
+
 export { createLogger } from './utils/logger';
